@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defective Parts Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-graph-client/3.0.2/graph-js-sdk.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/msal/1.4.18/msal.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-section {
+            text-align: center;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+        }
+        
+        .btn-success:hover {
+            box-shadow: 0 10px 20px rgba(46, 204, 113, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(149, 165, 166, 0.3);
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.2);
+            background: white;
+        }
+        
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 15px;
+            border: 2px dashed #3498db;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(52, 152, 219, 0.05);
+        }
+        
+        .file-input-label:hover {
+            background: rgba(52, 152, 219, 0.1);
+            border-color: #2980b9;
+        }
+        
+        .preview-container {
+            margin-top: 15px;
+        }
+        
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid #2ecc71;
+            color: #27ae60;
+        }
+        
+        .status.error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid #e74c3c;
+            color: #c0392b;
+        }
+        
+        .status.loading {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid #3498db;
+            color: #2980b9;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 5px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #2c3e50;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .report-item {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .report-meta {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-exclamation-triangle"></i> Defective Parts Tracker</h1>
+            <p>Log, track, and manage defective parts with Microsoft OneDrive integration</p>
+        </div>
+        
+        <div id="authSection" class="card auth-section">
+            <h2 style="margin-bottom: 20px; color: #2c3e50;">Microsoft 365 Authentication</h2>
+            <p style="margin-bottom: 30px; color: #7f8c8d;">Sign in with your Microsoft 365 account to access OneDrive storage</p>
+            <button id="loginBtn" class="btn">
+                <i class="fab fa-microsoft"></i>
+                Sign in with Microsoft 365
+            </button>
+        </div>
+        
+        <div id="mainApp" class="hidden">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <span>Welcome, <strong id="userInfo"></strong></span>
+                    <button id="logoutBtn" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="add">
+                    <i class="fas fa-plus"></i>
+                    Add Defect
+                </div>
+                <div class="tab" data-tab="search">
+                    <i class="fas fa-search"></i>
+                    View Reports
+                </div>
+            </div>
+            
+            <div id="addTab" class="tab-content active">
+                <div class="card">
+                    <h2 style="margin-bottom: 30px; color: #2c3e50;">
+                        <i class="fas fa-clipboard-list"></i>
+                        Log New Defect
+                    </h2>
+                    
+                    <div id="statusMessage"></div>
+                    
+                    <form id="defectForm">
+                        <div class="form-group">
+                            <label for="defectDate">
+                                <i class="fas fa-calendar"></i>
+                                Date
+                            </label>
+                            <input type="date" id="defectDate" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="partName">
+                                <i class="fas fa-cog"></i>
+                                Part Name
+                            </label>
+                            <input type="text" id="partName" class="form-control" placeholder="Enter part name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="partNumber">
+                                <i class="fas fa-barcode"></i>
+                                Part Number (SKU)
+                            </label>
+                            <input type="text" id="partNumber" class="form-control" placeholder="Enter part number/SKU" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="defectDescription">
+                                <i class="fas fa-edit"></i>
+                                Description of Defect / Decision Made
+                            </label>
+                            <textarea id="defectDescription" class="form-control" placeholder="Describe the defect and any decisions made..." required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="defectPhoto">
+                                <i class="fas fa-camera"></i>
+                                Photo of Defective Part
+                            </label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="defectPhoto" class="file-input" accept="image/*" capture="camera">
+                                <label for="defectPhoto" class="file-input-label">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                                    Click to upload photo or use camera
+                                </label>
+                            </div>
+                            <div id="photoPreview" class="preview-container hidden">
+                                <img id="previewImage" class="preview-image" alt="Preview">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success" style="width: 100%;">
+                            <i class="fas fa-save"></i>
+                            Save Defect Report
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="searchTab" class="tab-content">
+                <div class="card">
+                    <h2 style="margin-bottom: 30px; color: #2c3e50;">
+                        <i class="fas fa-search"></i>
+                        Search Reports
+                    </h2>
+                    
+                    <div class="form-group">
+                        <label for="searchPartNumber">
+                            <i class="fas fa-barcode"></i>
+                            Search by Part Number
+                        </label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="searchPartNumber" class="form-control" placeholder="Enter part number to search">
+                            <button id="searchBtn" class="btn">
+                                <i class="fas fa-search"></i>
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="searchResults"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MSAL Configuration
+        const msalConfig = {
+            auth: {
+                clientId: 'your-client-id-here', // Replace with your actual client ID
+                authority: 'https://login.microsoftonline.com/common',
+                redirectUri: window.location.origin
+            },
+            cache: {
+                cacheLocation: 'localStorage',
+                storeAuthStateInCookie: false
+            }
+        };
+
+        const loginRequest = {
+            scopes: ['Files.ReadWrite', 'User.Read']
+        };
+
+        let msalInstance;
+        let graphClient;
+        let currentUser;
+
+        // Initialize MSAL
+        function initializeMsal() {
+            msalInstance = new Msal.UserAgentApplication(msalConfig);
+            
+            // Handle redirect callback
+            msalInstance.handleRedirectCallback((error, response) => {
+                if (error) {
+                    console.error('Login error:', error);
+                    showStatus('Authentication failed. Please try again.', 'error');
+                } else if (response) {
+                    console.log('Login success:', response);
+                    initializeApp();
+                }
+            });
+            
+            // Check if user is already logged in
+            const account = msalInstance.getAccount();
+            if (account) {
+                initializeApp();
+            }
+        }
+
+        // Initialize the app after authentication
+        async function initializeApp() {
+            try {
+                const account = msalInstance.getAccount();
+                if (!account) {
+                    document.getElementById('authSection').classList.remove('hidden');
+                    document.getElementById('mainApp').classList.add('hidden');
+                    return;
+                }
+
+                // Get access token
+                const tokenResponse = await msalInstance.acquireTokenSilent(loginRequest);
+                
+                // Initialize Graph client
+                graphClient = MicrosoftGraph.Client.init({
+                    authProvider: (done) => {
+                        done(null, tokenResponse.accessToken);
+                    }
+                });
+
+                // Get user info
+                const user = await graphClient.api('/me').get();
+                currentUser = user;
+                
+                document.getElementById('userInfo').textContent = user.displayName;
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                
+                // Set default date to today
+                document.getElementById('defectDate').valueAsDate = new Date();
+                
+            } catch (error) {
+                console.error('App initialization error:', error);
+                showStatus('Failed to initialize app. Please try logging in again.', 'error');
+            }
+        }
+
+        // Login function
+        function login() {
+            msalInstance.loginRedirect(loginRequest);
+        }
+
+        // Logout function
+        function logout() {
+            msalInstance.logout();
+        }
+
+        // Show status message
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.innerHTML = `<div class="status ${type}"><i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'spinner fa-spin'}"></i> ${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // Create OneDrive folder structure
+        async function createFolderStructure() {
+            try {
+                // Create main DefectReports folder
+                await graphClient.api('/me/drive/root/children')
+                    .post({
+                        name: 'DefectReports',
+                        folder: {},
+                        '@microsoft.graph.conflictBehavior': 'ignore'
+                    });
+            } catch (error) {
+                console.log('Folder may already exist:', error);
+            }
+        }
+
+        // Upload image to OneDrive
+        async function uploadImage(file, partNumber, timestamp) {
+            try {
+                const fileName = `${partNumber}_${timestamp}_${file.name}`;
+                const folderPath = `/DefectReports/${partNumber}`;
+                
+                // Create part-specific folder
+                try {
+                    await graphClient.api('/me/drive/root:/DefectReports:')
+                        .children.post({
+                            name: partNumber,
+                            folder: {},
+                            '@microsoft.graph.conflictBehavior': 'ignore'
+                        });
+                } catch (error) {
+                    console.log('Part folder may already exist:', error);
+                }
+                
+                // Upload image
+                const uploadResponse = await graphClient.api(`/me/drive/root:${folderPath}/${fileName}:/content`)
+                    .put(file);
+                    
+                return uploadResponse.webUrl;
+            } catch (error) {
+                console.error('Image upload error:', error);
+                throw error;
+            }
+        }
+
+        // Save defect report
+        async function saveDefectReport(defectData) {
+            try {
+                const fileName = `${defectData.partNumber}.json`;
+                const filePath = `/DefectReports/${fileName}`;
+                
+                // Try to get existing report
+                let existingData = { defects: [] };
+                try {
+                    const existingFile = await graphClient.api(`/me/drive/root:${filePath}:/content`).get();
+                    existingData = JSON.parse(existingFile);
+                } catch (error) {
+                    console.log('No existing report found, creating new one');
+                }
+                
+                // Add new defect to existing data
+                existingData.defects.push(defectData);
+                existingData.lastUpdated = new Date().toISOString();
+                existingData.partName = defectData.partName;
+                existingData.partNumber = defectData.partNumber;
+                
+                // Save updated report
+                await graphClient.api(`/me/drive/root:${filePath}:/content`)
+                    .put(JSON.stringify(existingData, null, 2));
+                    
+                return true;
+            } catch (error) {
+                console.error('Save report error:', error);
+                throw error;
+            }
+        }
+
+        // Search reports
+        async function searchReports(partNumber) {
+            try {
+                const fileName = `${partNumber}.json`;
+                const filePath = `/DefectReports/${fileName}`;
+                
+                const fileContent = await graphClient.api(`/me/drive/root:${filePath}:/content`).get();
+                return JSON.parse(fileContent);
+            } catch (error) {
+                console.log('No report found for part number:', partNumber);
+                return null;
+            }
+        }
+
+        // Display search results
+        function displaySearchResults(reportData) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!reportData) {
+                resultsDiv.innerHTML = '<div class="status error">No reports found for this part number.</div>';
+                return;
+            }
+            
+            let html = `
+                <div class="card" style="margin-top: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 20px;">
+                        <i class="fas fa-file-alt"></i>
+                        Report for ${reportData.partName} (${reportData.partNumber})
+                    </h3>
+                    <p><strong>Total Defects:</strong> ${reportData.defects.length}</p>
+                    <p><strong>Last Updated:</strong> ${new Date(reportData.lastUpdated).toLocaleDateString()}</p>
+                    
+                    <div style="margin: 20px 0;">
+                        <button onclick="exportReport('${reportData.partNumber}', 'json')" class="btn btn-secondary" style="margin-right: 10px;">
+                            <i class="fas fa-download"></i> Export JSON
+                        </button>
+                        <button onclick="exportReport('${reportData.partNumber}', 'csv')" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 15px;">Defect History:</h4>
+            `;
+            
+            reportData.defects.forEach((defect, index) => {
+                html += `
+                    <div class="report-item">
+                        <div class="report-meta">
+                            <i class="fas fa-calendar"></i> ${new Date(defect.date).toLocaleDateString()} | 
+                            <i class="fas fa-clock"></i> ${new Date(defect.timestamp).toLocaleString()}
+                        </div>
+                        <h5 style="color: #2c3e50; margin-bottom: 10px;">${defect.partName} - ${defect.partNumber}</h5>
+                        <p style="margin-bottom: 15px;">${defect.description}</p>
+                        ${defect.photoUrl ? `<img src="${defect.photoUrl}" alt="Defect photo" style="max-width: 200px; border-radius: 8px;">` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // Export report function
+        async function exportReport(partNumber, format) {
+            try {
+                const reportData = await searchReports(partNumber);
+                if (!reportData) return;
+                
+                let content, mimeType, filename;
+                
+                if (format === 'json') {
+                    content = JSON.stringify(reportData, null, 2);
+                    mimeType = 'application/json';
+                    filename = `${partNumber}_report.json`;
+                } else if (format === 'csv') {
+                    // Convert to CSV
+                    const csvHeaders = 'Date,Part Name,Part Number,Description,Photo URL\n';
+                    const csvRows = reportData.defects.map(defect => 
+                        `"${defect.date}","${defect.partName}","${defect.partNumber}","${defect.description.replace(/"/g, '""')}","${defect.photoUrl || ''}"`
+                    ).join('\n');
+                    content = csvHeaders + csvRows;
+                    mimeType = 'text/csv';
+                    filename = `${partNumber}_report.csv`;
+                }
+                
+                // Create and download file
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showStatus(`Report exported as ${filename}`, 'success');
+            } catch (error) {
+                console.error('Export error:', error);
+                showStatus('Failed to export report', 'error');
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMsal();
+            
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.dataset.tab;
+                    
+                    // Update active tab
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    document.getElementById(tabName + 'Tab').classList.add('active');
+                });
+            });
+            
+            // Login button
+            document.getElementById('loginBtn').addEventListener('click', login);
+            
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Photo preview
+            document.getElementById('defectPhoto').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('previewImage').src = e.target.result;
+                        document.getElementById('photoPreview').classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Form submission
+            document.getElementById('defectForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                showStatus('Saving defect report...', 'loading');
+                
+                try {
+                    await createFolderStructure();
+                    
+                    const formData = {
+                        date: document.getElementById('defectDate').value,
+                        partName: document.getElementById('partName').value,
+                        partNumber: document.getElementById('partNumber').value,
+                        description: document.getElementById('defectDescription').value,
+                        timestamp: new Date().toISOString(),
+                        reportedBy: currentUser.displayName
+                    };
+                    
+                    // Upload photo if provided
+                    const photoFile = document.getElementById('defectPhoto').files[0];
+                    if (photoFile) {
+                        const timestamp = Date.now();
+                        formData.photoUrl = await uploadImage(photoFile, formData.partNumber, timestamp);
+                    }
+                    
+                    // Save report
+                    await saveDefectReport(formData);
+                    
+                    showStatus('Defect report saved successfully!', 'success');
+                    
+                    // Reset form
+                    document.getElementById('defectForm').reset();
+                    document.getElementById('defectDate').valueAsDate = new Date();
+                    document.getElementById('photoPreview').classList.add('hidden');
+                    
+                } catch (error) {
+                    console.error('Save error:', error);
+                    showStatus('Failed to save defect report. Please try again.', 'error');
+                }
+            });
+            
+            // Search functionality
+            document.getElementById('searchBtn').addEventListener('click', async function() {
+                const partNumber = document.getElementById('searchPartNumber').value.trim();
+                if (!partNumber) {
+                    showStatus('Please enter a part number to search.', 'error');
+                    return;
+                }
+                
+                try {
+                    const reportData = await searchReports(partNumber);
+                    displaySearchResults(reportData);
+                } catch (error) {
+                    console.error('Search error:', error);
+                    document.getElementById('searchResults').innerHTML = '<div class="status error">Error searching for reports.</div>';
+                }
+            });
+            
+            // Enter key search
+            document.getElementById('searchPartNumber').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('searchBtn').click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
