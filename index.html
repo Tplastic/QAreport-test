@@ -867,3 +867,214 @@
                         doc.text('Image could not be embedded', 20, yPosition);
                         yPosition += 8;
                     }
+                }
+                
+                // Add separator line between reports
+                if (index < reports.length - 1) {
+                    doc.setDrawColor(220, 220, 220);
+                    doc.setLineWidth(0.3);
+                    doc.line(20, yPosition + 5, 190, yPosition + 5);
+                    yPosition += 15;
+                }
+            });
+            
+            // Footer on last page
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(128, 128, 128);
+                doc.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+                doc.text('Parts Failure Reporting System', 20, 290);
+                doc.text(currentDate, 190, 290, { align: 'right' });
+            }
+            
+            // Save the PDF
+            const fileName = `parts-failure-report-${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+        }
+
+        // Email setup functions
+        function showEmailSetup() {
+            document.getElementById('emailModal').style.display = 'block';
+            
+            // Load existing config if available
+            const savedConfig = getEmailConfig();
+            if (savedConfig.publicKey) {
+                document.getElementById('publicKey').value = savedConfig.publicKey;
+                document.getElementById('serviceId').value = savedConfig.serviceId;
+                document.getElementById('templateId').value = savedConfig.templateId;
+            }
+        }
+
+        function closeEmailSetup() {
+            document.getElementById('emailModal').style.display = 'none';
+        }
+
+        function saveEmailConfig() {
+            const publicKey = document.getElementById('publicKey').value.trim();
+            const serviceId = document.getElementById('serviceId').value.trim();
+            const templateId = document.getElementById('templateId').value.trim();
+
+            if (!publicKey || !serviceId || !templateId) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Save configuration
+            emailjs.init(publicKey);
+            EMAIL_CONFIG.serviceId = serviceId;
+            EMAIL_CONFIG.templateId = templateId;
+
+            showNotification('Email settings saved successfully!', 'success');
+            closeEmailSetup();
+        }
+
+        function getEmailConfig() {
+            // In a real app, you'd load from localStorage
+            return {
+                publicKey: '',
+                serviceId: EMAIL_CONFIG.serviceId,
+                templateId: EMAIL_CONFIG.templateId
+            };
+        }
+
+        async function testEmail() {
+            const publicKey = document.getElementById('publicKey').value.trim();
+            const serviceId = document.getElementById('serviceId').value.trim();
+            const templateId = document.getElementById('templateId').value.trim();
+
+            if (!publicKey || !serviceId || !templateId) {
+                alert('Please fill in all fields before testing');
+                return;
+            }
+
+            try {
+                emailjs.init(publicKey);
+                
+                const testParams = {
+                    to_email: 'test@example.com',
+                    from_name: 'Reporting System',
+                    report_date: formatDate(new Date().toISOString().split('T')[0]),
+                    part_name: 'Test Component',
+                    part_number: 'TEST-001',
+                    priority: '🟡 Medium',
+                    description: 'This is a test report to verify the email system is working correctly.',
+                    reporter_email: 'reporter@example.com',
+                    timestamp: new Date().toLocaleString()
+                };
+
+                await emailjs.send(serviceId, templateId, testParams);
+                showNotification('Test email sent successfully! Check your inbox.', 'success');
+                
+            } catch (error) {
+                console.error('Test email error:', error);
+                showNotification('Email test failed. Please check your settings.', 'error');
+            }
+        }
+
+        // Image modal functionality
+        function openImageModal(imageSrc) {
+            // Create modal for full-size image viewing
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.9);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 2000;
+                cursor: pointer;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = imageSrc;
+            img.style.cssText = `
+                max-width: 90%;
+                max-height: 90%;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            `;
+            
+            modal.appendChild(img);
+            document.body.appendChild(modal);
+            
+            modal.onclick = function() {
+                document.body.removeChild(modal);
+            };
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('emailModal');
+            if (event.target === modal) {
+                closeEmailSetup();
+            }
+        };
+
+        // Drag and drop functionality for file input
+        const fileInput = document.getElementById('image');
+        const fileLabel = document.querySelector('.file-input-label');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            fileLabel.style.borderColor = '#667eea';
+            fileLabel.style.backgroundColor = '#f0f4ff';
+        }
+
+        function unhighlight(e) {
+            fileLabel.style.borderColor = '#dee2e6';
+            fileLabel.style.backgroundColor = '';
+        }
+
+        fileLabel.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                fileInput.files = files;
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+            }
+        }
+
+        // Initialize tooltips and help text
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add helpful placeholder text and validation
+            const form = document.getElementById('failureForm');
+            
+            form.addEventListener('submit', function(e) {
+                // Additional client-side validation
+                const description = document.getElementById('description').value;
+                if (description.length < 20) {
+                    e.preventDefault();
+                    alert('Please provide a more detailed description (at least 20 characters).');
+                    return;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
